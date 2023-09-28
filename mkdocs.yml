@@ -1,0 +1,9 @@
+site_name: Applied LLMs
+site_url: http://appliedllms.com
+nav:
+  - Home: index.md
+  - About: about.md
+  - Contact: contact.md
+  - Blog: blog.md
+theme: 
+  name: material
