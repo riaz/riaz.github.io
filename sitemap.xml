@@ -2,7 +2,37 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>http://appliedllms.com/</loc>
-         <lastmod>2023-09-28</lastmod>
+         <lastmod>2023-09-29</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>http://appliedllms.com/about/</loc>
+         <lastmod>2023-09-29</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>http://appliedllms.com/contact/</loc>
+         <lastmod>2023-09-29</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>http://appliedllms.com/blog/</loc>
+         <lastmod>2023-09-29</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>http://appliedllms.com/blog/about/</loc>
+         <lastmod>2023-09-29</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>http://appliedllms.com/blog/blah/</loc>
+         <lastmod>2023-09-29</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>http://appliedllms.com/blog/demo/</loc>
+         <lastmod>2023-09-29</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>
