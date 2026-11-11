@@ -24,8 +24,10 @@
 // Tesla redirects here with ?code=…&state=…. clearview runs on your home server, which the
 // internet can't reach, so this page forwards the browser there. The home-server address is
 // carried in `state` ("<nonce>.<base64url(url)>") and is only followed if it points at a
-// private address: localhost, LAN IPs, *.local / *.lan / *.home.arpa / *.internal, or a
-// Tailscale name or IP. The code is single-use and worthless without your client secret.
+// private address: localhost, LAN IPs, bare hostnames, *.local / *.lan / *.home.arpa /
+// *.internal, or a Tailscale name or IP. If `state` has no usable address, the page falls
+// back to the fixed home address in home.json (written by scripts/publish_site.sh).
+// The code is single-use and worthless without your client secret.
 (function () {
   const out = document.getElementById("out");
   const q = new URLSearchParams(location.search);
@@ -34,6 +36,7 @@
   function isPrivateHost(h) {
     h = h.toLowerCase().replace(/^\[|\]$/g, "");
     if (h === "localhost" || h === "::1") return true;
+    if (/^[a-z0-9-]+$/.test(h) && !/^\d+$/.test(h)) return true;  // bare hostname, e.g. my-macbook
     if (/\.(local|lan|home|home\.arpa|internal|ts\.net)$/.test(h)) return true;
     const m = h.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
     if (!m) return false;
@@ -42,47 +45,68 @@
            (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127);
   }
 
-  function target() {
-    const dot = state.indexOf(".");
-    if (dot < 0) return null;
+  function check(raw) {
     try {
-      let b = state.slice(dot + 1).replace(/-/g, "+").replace(/_/g, "/");
-      while (b.length % 4) b += "=";
-      const u = new URL(atob(b));
+      const u = new URL(raw);
+      if (u.hostname === "0.0.0.0") u.hostname = "localhost";
       if (!/^https?:$/.test(u.protocol) || !isPrivateHost(u.hostname)) return null;
       if (!/\/(auth\/)?callback\/?$/.test(u.pathname)) return null;
       return u;
     } catch (e) { return null; }
   }
 
-  const t = target();
-  if (t && (q.has("code") || q.has("error"))) {
-    q.forEach((v, k) => t.searchParams.set(k, v));
-    location.replace(t.toString());
-    return;
+  function fromState() {
+    const dot = state.indexOf(".");
+    if (dot < 0) return null;
+    try {
+      let b = state.slice(dot + 1).replace(/-/g, "+").replace(/_/g, "/");
+      while (b.length % 4) b += "=";
+      return check(atob(b));
+    } catch (e) { return null; }
   }
 
-  // No usable home-server address: show the URL so it can be pasted into
-  // `clearview auth login --no-browser`.
-  const err = q.get("error");
-  out.innerHTML = "";
-  const h = document.createElement("h1");
-  h.textContent = err ? "Tesla login failed" : (q.has("code") ? "Copy this URL into clearview" : "clearview");
-  out.appendChild(h);
-  const p = document.createElement("p");
-  p.textContent = err
-    ? (q.get("error_description") || err)
-    : q.has("code")
-      ? "Couldn't tell which home server started this login. Paste the URL below where clearview asks for it."
-      : "This page receives Tesla login redirects for a self-hosted clearview server.";
-  out.appendChild(p);
-  if (q.has("code")) {
-    const ta = document.createElement("textarea");
-    ta.readOnly = true; ta.value = location.href; out.appendChild(ta);
-    const btn = document.createElement("button");
-    btn.textContent = "Copy";
-    btn.onclick = () => navigator.clipboard.writeText(location.href).then(() => (btn.textContent = "Copied"));
-    out.appendChild(btn);
+  async function fromHomeJson() {
+    try {
+      const r = await fetch("home.json", { cache: "no-store" });
+      if (!r.ok) return null;
+      const home = (await r.json()).home;
+      return home ? check(home.replace(/\/+$/, "") + "/auth/callback") : null;
+    } catch (e) { return null; }
+  }
+
+  function go(t) {
+    q.forEach((v, k) => t.searchParams.set(k, v));
+    location.replace(t.toString());
+  }
+
+  if (!(q.has("code") || q.has("error"))) return showFallback();
+  const t = fromState();
+  if (t) return go(t);
+  fromHomeJson().then((h) => (h ? go(h) : showFallback()));
+
+  function showFallback() {
+    // No usable home-server address: show the URL so it can be pasted into
+    // `clearview auth login --no-browser`.
+    const err = q.get("error");
+    out.innerHTML = "";
+    const h = document.createElement("h1");
+    h.textContent = err ? "Tesla login failed" : (q.has("code") ? "Copy this URL into clearview" : "clearview");
+    out.appendChild(h);
+    const p = document.createElement("p");
+    p.textContent = err
+      ? (q.get("error_description") || err)
+      : q.has("code")
+        ? "Couldn't tell which home server started this login. Paste the URL below where clearview asks for it."
+        : "This page receives Tesla login redirects for a self-hosted clearview server.";
+    out.appendChild(p);
+    if (q.has("code")) {
+      const ta = document.createElement("textarea");
+      ta.readOnly = true; ta.value = location.href; out.appendChild(ta);
+      const btn = document.createElement("button");
+      btn.textContent = "Copy";
+      btn.onclick = () => navigator.clipboard.writeText(location.href).then(() => (btn.textContent = "Copied"));
+      out.appendChild(btn);
+    }
   }
 })();
 </script>
